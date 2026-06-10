@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!-- Minimal browser chat stub for the HealthLake agent skeleton.
+     Points at the FastAPI example (examples/api.py). Auth is intentionally NOT implemented here —
+     wire it to your real identity provider before any non-local use. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HealthLake Agent (skeleton)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; }
+      #log { border: 1px solid #ccc; padding: 1rem; min-height: 12rem; white-space: pre-wrap; }
+      input { width: 80%; } button { width: 18%; }
+    </style>
+  </head>
+  <body>
+    <h1>HealthLake Agent — skeleton</h1>
+    <p>Reference UI only. The <code>/ask</code> endpoint is a stub.</p>
+    <div id="log"></div>
+    <p><input id="q" placeholder="Ask a question..." /><button onclick="ask()">Send</button></p>
+    <script>
+      // TODO: attach a real auth token (Authorization header) from your IdP before sending.
+      async function ask() {
+        const q = document.getElementById('q').value;
+        const log = document.getElementById('log');
+        log.textContent += `\nYou: ${q}`;
+        try {
+          const res = await fetch('/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: q }),
+          });
+          log.textContent += `\nAgent: ${await res.text()}`;
+        } catch (e) {
+          log.textContent += `\n[error] ${e}`;
+        }
+      }
+    </script>
+  </body>
+</html>

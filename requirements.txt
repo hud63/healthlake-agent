@@ -1,0 +1,11 @@
+# Skeleton dependencies — pin versions when you implement.
+boto3
+botocore
+pydantic>=2
+python-dotenv
+# Agent framework (choose one when implementing): strands-agents OR bedrock-agentcore
+# strands-agents
+# bedrock-agentcore
+# API example only:
+# fastapi
+# uvicorn

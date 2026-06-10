@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Comment": "Least-privilege template for HealthLake FHIR read access. Replace REGION, ACCOUNT_ID, DATASTORE_ID. Scope to read-only unless a write workflow is explicitly required.",
+  "Statement": [
+    {
+      "Sid": "HealthLakeReadFHIR",
+      "Effect": "Allow",
+      "Action": [
+        "healthlake:ReadResource",
+        "healthlake:SearchWithGet",
+        "healthlake:SearchWithPost",
+        "healthlake:DescribeFHIRDatastore"
+      ],
+      "Resource": "arn:aws:healthlake:REGION:ACCOUNT_ID:datastore/fhir/DATASTORE_ID"
+    }
+  ]
+}
