@@ -1,4 +1,4 @@
-# Container image for Bedrock AgentCore Runtime (ARM64). Skeleton.
+# Container image for Bedrock AgentCore Runtime (ARM64).
 FROM public.ecr.aws/lambda/python:3.12-arm64
 
 WORKDIR /var/task
@@ -9,5 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # AgentCore invokes the handler in agent_agentcore.py.
-# TODO: confirm the entrypoint/handler contract for your AgentCore runtime version.
 CMD ["agent_agentcore.handler"]

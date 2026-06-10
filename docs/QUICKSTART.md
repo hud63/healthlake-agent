@@ -1,21 +1,20 @@
 # Quickstart (local)
 
-This skeleton does not run end-to-end until the `TODO`s are implemented. To explore the structure:
+Set up a virtualenv and install dependencies:
 
 ```bash
 python -m venv .venv
-# Windows: .venv\Scripts\activate   |   *nix: source .venv/bin/activate
+# Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.template .env   # then edit values
 ```
 
-Import the agent module (tools will raise `NotImplementedError` until wired):
+List the tools the agent exposes:
 
-```python
-from agent import TOOLS
-print([t.__name__ for t in TOOLS])
+```bash
+python agent.py
 ```
 
-Next: implement FHIR/S3 calls in `agent.py`, identity extraction in `agent_agentcore.py`, then
-deploy per `docs/DEPLOYMENT.md`.
+Then point `.env` at a HealthLake datastore loaded with synthetic data and deploy per
+`docs/DEPLOYMENT.md`.

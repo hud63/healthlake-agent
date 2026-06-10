@@ -2,35 +2,34 @@
 
 ## Components
 
-- **AgentCore Runtime** — serverless ARM64 container running the agent; provides session memory.
-- **agent.py** — the agent + 7 tools. The LLM reasons over the conversation; tools do the data access.
-- **AWS HealthLake** — FHIR R4 datastore. Accessed via SigV4-signed REST.
-- **Amazon S3** — clinical documents; read directly or via presigned URLs.
-- **Identity (Cognito / OIDC)** — the verified caller identity, propagated into every tool call.
-- **CloudWatch** — logs/metrics; interaction logs carry digests, never raw PHI.
+- **AgentCore Runtime** runs the agent in a containerized ARM64 environment and provides session memory.
+- **agent.py** holds the agent and its seven tools. The model reasons over the conversation; the tools do the data access.
+- **AWS HealthLake** is the FHIR R4 datastore, reached over SigV4-signed REST.
+- **Amazon S3** holds clinical documents, read directly or through presigned URLs.
+- **Identity (Cognito or OIDC)** supplies the verified caller identity, propagated into every tool call.
+- **CloudWatch** carries logs and metrics; interaction logs hold digests, never raw PHI.
 
 ## Request flow
 
-1. Authenticated request hits the AgentCore handler (`agent_agentcore.py`).
-2. The handler builds a `SessionContext` from verified claims (subject, role, entitled patients).
+1. An authenticated request reaches the AgentCore handler in `agent_agentcore.py`.
+2. The handler builds a `SessionContext` from verified claims (subject, role, entitled patients) and binds it for the turn.
 3. The agent reasons and selects tools.
-4. Each tool calls `assert_in_scope(ctx, ...)` before any AWS call.
-5. Data-layer scoping (IAM policy + FHIR `_security` / patient filters) enforces the same boundary
-   independently.
-6. Coded FHIR values are translated to readable text before reaching the user.
+4. Each tool reads the bound session and calls `assert_in_scope` before any AWS call.
+5. Data-layer scoping (IAM policy plus FHIR `_security` and patient filters) enforces the same boundary independently.
+6. Coded FHIR values are translated to readable text before they reach the user.
 
-## Why identity-at-the-data-layer
+## Why identity rides into every call
 
-The sharp risk in a clinical agent is a **scope error** — returning a record that belongs to someone
-else — not a reasoning error. A scheduling mistake is recoverable; a wrong-record disclosure is a
+The sharp risk in a clinical agent is a scope error, returning a record that belongs to someone
+else, not a reasoning error. A scheduling mistake is recoverable; a wrong-record disclosure is a
 breach. So entitlement is enforced where data is fetched, by an identity the prompt cannot alter,
 with the in-app `assert_in_scope` check as defense in depth.
 
-## Deliberately no CloudFormation/CDK
+## Why no CloudFormation
 
-Provisioning is CLI scripts so the multi-minute HealthLake datastore creation is observable and
-re-runnable step by step. IAM lives as reviewable JSON templates in `iam/`.
+Provisioning is CLI plus boto3 so the multi-minute HealthLake datastore creation is observable and
+re-runnable step by step. IAM lives as reviewable JSON in `iam/`.
 
 ## Diagram
 
-`docs/generated-diagrams/` — TODO: add an architecture PNG.
+`docs/generated-diagrams/` holds the architecture image.

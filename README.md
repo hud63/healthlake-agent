@@ -1,79 +1,110 @@
-# HealthLake Agent — Skeleton
+# 🏥 HealthLake Agent
 
-> **Reference scaffold, not production.** This is a sanitized starter skeleton for an
-> identity-aware healthcare agent on AWS Bedrock AgentCore over AWS HealthLake (FHIR R4).
-> Every tool, model call, and deploy step is a **stub with `TODO` markers** — it documents the
-> shape of the architecture so you can fill in implementation per engagement. No client data, no
-> real account IDs, no secrets.
+**An identity-aware healthcare agent on AWS Bedrock AgentCore: it answers natural-language questions over clinical data in AWS HealthLake (FHIR R4) and documents in S3, and it can only ever read records the caller is entitled to.**
 
-## What this skeleton is for
+Bridges conversational reasoning (Bedrock Claude) with governed clinical data access, where the caller's identity rides into every tool call so entitlement is enforced at the data layer, not by prompt instruction.
 
-A conversational agent that answers natural-language questions over clinical data in **AWS
-HealthLake** (FHIR R4) and documents in **S3**, with access **scoped by the caller's identity** so
-the agent can only ever read records the caller is entitled to. The defining design principle is:
+---
 
-**Scope access at the data layer, not by prompt instruction.** The authenticated identity is
-propagated into every tool call; the agent literally cannot retrieve a resource outside its scope.
+## The problem this solves
 
-## Architecture (target)
+- Front-desk and clinical staff burn hours on routine lookups, "what's this patient's immunization history", "find the latest visit note", that don't need a human to run.
+- The data is there (FHIR resources in HealthLake, documents in S3) but it takes a query, not a question, and the people who need it don't speak FHIR.
+- The hard part isn't reasoning, it's scope: a scheduling mistake is recoverable, returning a record that belongs to someone else is a breach.
+- So access is scoped by the authenticated identity on every call, the model never sees a resource the caller isn't entitled to, and every turn is auditable.
+
+---
+
+## What it does
+
+- **Answers questions** over clinical data using seven tools, four for FHIR (HealthLake), three for documents (S3).
+- **Resolves entitlement** from the caller's verified identity (role plus the patients they're allowed to see) before any data call runs.
+- **Translates codes** so SNOMED, LOINC and RxNorm values come back as readable text instead of raw codes.
+- **Reads documents** directly or hands back a time-limited presigned URL for large files.
+- **Logs every turn** with a prompt digest and the tools invoked, never raw PHI, so the access trail is queryable.
+
+---
+
+## Architecture
 
 ```
-            Caller (authenticated)  ──identity (Cognito / OIDC)──┐
-                                                                 ▼
-   Chat / API ──► AgentCore Runtime ──► agent.py (LLM reasoning) ──► 7 tools
-                  (containerized,                                   │
-                   ARM64 Lambda)                ┌──────────────────┼──────────────────┐
-                                                ▼                  ▼                  ▼
-                                          FHIR tools          S3 doc tools       (identity ctx
-                                          (HealthLake)        (clinical docs)     rides every call)
+        Caller (authenticated)
+               │  identity (Cognito / OIDC claims)
+               ▼
+   ┌─────────────────────┐
+   │  AgentCore Runtime  │   containerized ARM64, session memory
+   │  agent_agentcore.py │   builds a scoped SessionContext per request
+   └──────────┬──────────┘
+              ▼
+   ┌─────────────────────┐
+   │      agent.py       │   Bedrock Claude reasons, selects tools
+   └──────────┬──────────┘
+     ┌─────────┴──────────┐
+     ▼                    ▼
+  FHIR tools           S3 tools          every tool calls assert_in_scope(ctx)
+  (HealthLake)         (documents)       before any AWS request
 ```
 
-| Layer | Service | Role |
-| :--- | :--- | :--- |
-| Runtime | Bedrock AgentCore | Serverless container (ARM64); session memory |
-| Reasoning | Bedrock (Claude) | Model id via `config.py` / `MODEL_ID` env (placeholder) |
-| Clinical data | AWS HealthLake | FHIR R4 datastore; SigV4 REST |
-| Documents | Amazon S3 | Clinical notes / guidelines; presigned URLs |
-| Registry | Amazon ECR | Container image |
-| Observability | CloudWatch | Logs / metrics |
+Each tool runs `assert_in_scope` against the request's `SessionContext` first, then makes a SigV4-signed FHIR call or a boto3 S3 call. Data-layer scoping (IAM plus FHIR `_security` filters) enforces the same boundary independently, so a prompt can't talk the agent past it.
 
-No CloudFormation/CDK — provisioning and deploy are CLI scripts (PowerShell + Python) so the
-5–10 minute HealthLake datastore creation stays visible. IAM is least-privilege JSON templates in
-`iam/`.
+---
 
-## The 7 tools (stubs in `agent.py`)
+## Tech stack
 
-FHIR (HealthLake): `get_datastore_info`, `search_fhir_resources`, `read_fhir_resource`,
-`patient_everything`.
-S3 (documents): `list_s3_documents`, `read_s3_document`, `generate_s3_presigned_url`.
+| Layer | Tooling |
+| :--- | :--- |
+| Agent runtime | **Bedrock AgentCore** (containerized ARM64 Lambda) |
+| Reasoning | **Bedrock Claude** (model id via `MODEL_ID`) |
+| Agent + tools | **Strands** (`@tool`) in `agent.py` |
+| Clinical data | **AWS HealthLake** FHIR R4, SigV4-signed REST |
+| Documents | **Amazon S3** (read + presigned URLs) |
+| Identity | **Cognito / OIDC** claims, propagated per call |
+| Deploy | **AWS CLI + boto3** scripts (PowerShell + Python) |
 
-## Layout
+---
+
+## Project structure
 
 ```
 healthlake-agent/
-├── agent.py                 # Agent + 7 tool stubs
-├── agent_agentcore.py       # AgentCore entrypoint wrapper
+├── agent.py                 # Agent + 7 tools (4 FHIR, 3 S3)
+├── agent_agentcore.py       # AgentCore entrypoint, builds the scoped session
 ├── config.py                # Env / settings
-├── models/                  # SessionContext, response, interaction log
-├── utils/                   # auth, retry, FHIR code translation
+├── models/                  # SessionContext + UserRole, response, interaction log
+├── utils/                   # auth scope checks, retry, FHIR code translation
 ├── prompts/                 # system prompt
 ├── scripts/                 # deploy + verify (PowerShell + Python)
 ├── iam/                     # least-privilege policy templates
 ├── docs/                    # ARCHITECTURE / DEPLOYMENT / QUICKSTART
-└── examples/                # FastAPI + browser chat stubs
+└── examples/                # FastAPI + browser chat
 ```
 
-## Quick start
+---
 
-See `docs/QUICKSTART.md`. In short: copy `.env.template` → `.env`, fill in your datastore/bucket,
-implement the `TODO`s, then `scripts/deploy_with_verification.py`.
+## Key engineering decisions
 
-## Status
+- **Scope at the data layer, not the prompt.** The verified identity is propagated into every tool call and checked with `assert_in_scope` before any AWS request, with IAM and FHIR `_security` enforcing the same boundary underneath. Scope errors, not reasoning errors, are the risk that matters in clinical data.
+- **Identity comes from the request context, never the prompt body.** `agent_agentcore.py` builds the `SessionContext` from verified claims, so nothing the user types can widen their access.
+- **Codes become language.** A translation pass turns coded FHIR values into readable text before they reach the model or the user.
+- **No CloudFormation.** Provisioning is CLI plus boto3 so the multi-minute HealthLake datastore creation stays visible and re-runnable step by step. IAM lives as reviewable JSON in `iam/`.
+- **Auditable by construction.** Each turn writes an interaction log with a prompt digest and the tools used, so compliance reads the access trail without a separate logging retrofit.
 
-Skeleton. Tools raise `NotImplementedError`. Wire them to your HealthLake datastore + S3 bucket and
-your identity provider before any real use. **HIPAA-eligible services do not make an application
-compliant** — that's on the implementation.
+---
 
-## License
+## Deploy (outline)
 
-MIT — see `LICENSE`.
+```bash
+cp .env.template .env          # set datastore id, bucket, model id, pool id
+python scripts/deploy_with_verification.py
+# or, on Windows:
+# .\scripts\deploy_agentcore.ps1
+```
+
+See `docs/DEPLOYMENT.md` for the full sequence and `docs/ARCHITECTURE.md` for the design.
+
+---
+
+> **Note:** Portfolio extract. No credentials are committed, deployment uses your own AWS
+> auth, and the datastore id, bucket and identifiers are placeholders you set in `.env`. Point it at
+> a HealthLake datastore loaded with synthetic data (for example Synthea) before any real use.
+> HIPAA-eligible services do not make an application compliant, that's on the deployment.

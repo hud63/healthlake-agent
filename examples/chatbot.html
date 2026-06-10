@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<!-- Minimal browser chat stub for the HealthLake agent skeleton.
-     Points at the FastAPI example (examples/api.py). Auth is intentionally NOT implemented here —
-     wire it to your real identity provider before any non-local use. -->
+<!-- Minimal browser chat for the HealthLake agent, pointing at the FastAPI example (examples/api.py).
+     Attach a real auth token from your identity provider before any non-local use. -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HealthLake Agent (skeleton)</title>
+    <title>HealthLake Agent</title>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; }
       #log { border: 1px solid #ccc; padding: 1rem; min-height: 12rem; white-space: pre-wrap; }
@@ -14,12 +13,12 @@
     </style>
   </head>
   <body>
-    <h1>HealthLake Agent — skeleton</h1>
-    <p>Reference UI only. The <code>/ask</code> endpoint is a stub.</p>
+    <h1>HealthLake Agent</h1>
+    <p>Ask a question about clinical data or documents.</p>
     <div id="log"></div>
     <p><input id="q" placeholder="Ask a question..." /><button onclick="ask()">Send</button></p>
     <script>
-      // TODO: attach a real auth token (Authorization header) from your IdP before sending.
+      // Attach an Authorization header from your IdP before sending in any real deployment.
       async function ask() {
         const q = document.getElementById('q').value;
         const log = document.getElementById('log');

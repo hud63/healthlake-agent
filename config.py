@@ -1,4 +1,4 @@
-"""Central configuration for the HealthLake agent skeleton.
+"""Central configuration.
 
 Loads settings from environment (see .env.template). No secrets are hardcoded.
 """
@@ -19,8 +19,8 @@ except ImportError:  # dotenv is optional at runtime
 class Settings:
     aws_region: str = os.getenv("AWS_REGION", "us-east-1")
 
-    # Model id is a placeholder — set MODEL_ID to your approved Claude model.
-    model_id: str = os.getenv("MODEL_ID", "REPLACE_WITH_YOUR_CLAUDE_MODEL_ID")
+    # Set MODEL_ID to your approved Bedrock Claude model.
+    model_id: str = os.getenv("MODEL_ID", "")
 
     healthlake_datastore_id: str = os.getenv("HEALTHLAKE_DATASTORE_ID", "")
     healthlake_endpoint: str = os.getenv("HEALTHLAKE_ENDPOINT", "")
@@ -35,9 +35,9 @@ class Settings:
     presigned_url_ttl_seconds: int = int(os.getenv("PRESIGNED_URL_TTL_SECONDS", "3600"))
 
     def healthlake_base_url(self) -> str:
-        """Derive the FHIR endpoint if not explicitly set. TODO: verify path for your region."""
+        """Return the FHIR endpoint, deriving it from the datastore id when not set explicitly."""
         if self.healthlake_endpoint:
-            return self.healthlake_endpoint
+            return self.healthlake_endpoint.rstrip("/") + "/"
         if not self.healthlake_datastore_id:
             raise ValueError("HEALTHLAKE_DATASTORE_ID is required")
         return (

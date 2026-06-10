@@ -1,1 +1,1 @@
-"""Data models for the HealthLake agent skeleton."""
+"""Data models for the HealthLake agent."""

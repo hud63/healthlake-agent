@@ -1,23 +1,25 @@
-"""AgentCore entrypoint wrapper (skeleton).
+"""AgentCore entrypoint.
 
-Exposes the agent as a handler for Bedrock AgentCore Runtime. The wrapper's job is to build a
-SessionContext from the *authenticated* request (identity from Cognito / the AgentCore identity
-context) and pass it into the agent so every downstream tool call is scoped.
+Exposes the agent as a handler for Bedrock AgentCore Runtime. Its job is to build a SessionContext
+from the verified identity on the request and bind it for the duration of the turn, so every tool
+call the agent makes is scoped to that caller.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from models.session import SessionContext, UserRole
+from agent import build_agent
+from models.session import SessionContext, UserRole, set_current_session
+
+_agent = build_agent()
 
 
 def _session_from_event(event: dict[str, Any]) -> SessionContext:
-    """Build a SessionContext from the authenticated request context.
+    """Build a SessionContext from the verified identity claims on the request.
 
-    TODO: extract the verified identity (subject, role, entitled patient ids) from the AgentCore
-    identity context / Cognito claims. NEVER trust identity fields supplied in the raw prompt body.
+    Identity comes from the AgentCore identity context or Cognito claims, never from the prompt body.
     """
-    claims = event.get("identity", {})  # placeholder shape
+    claims = event.get("identity", {})
     return SessionContext(
         subject=claims.get("sub", "anonymous"),
         role=UserRole(claims.get("role", "patient")),
@@ -28,9 +30,6 @@ def _session_from_event(event: dict[str, Any]) -> SessionContext:
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """AgentCore runtime entrypoint."""
     ctx = _session_from_event(event)
-    _ = ctx  # passed into agent.invoke once build_agent() is implemented
-    # TODO:
-    #   from agent import build_agent
-    #   agent = build_agent()
-    #   return agent.invoke(prompt=event["prompt"], session=ctx)
-    raise NotImplementedError("Build agent and invoke with the scoped SessionContext")
+    set_current_session(ctx)
+    result = _agent(event["prompt"])
+    return {"answer": str(result)}

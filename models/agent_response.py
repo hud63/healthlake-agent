@@ -8,7 +8,7 @@ from typing import Any
 @dataclass
 class AgentResponse:
     answer: str
-    sources: list[dict[str, Any]] = field(default_factory=list)  # tool name + resource refs
+    sources: list[dict[str, Any]] = field(default_factory=list)  # tool name plus resource refs
     tool_calls: list[str] = field(default_factory=list)
     truncated: bool = False
 

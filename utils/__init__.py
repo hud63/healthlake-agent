@@ -1,1 +1,1 @@
-"""Helper utilities for the HealthLake agent skeleton."""
+"""Helper utilities for the HealthLake agent."""

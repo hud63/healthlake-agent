@@ -16,11 +16,11 @@ FHIR: `get_datastore_info`, `search_fhir_resources`, `read_fhir_resource`, `pati
 S3: `list_s3_documents`, `read_s3_document`, `generate_s3_presigned_url`
 
 ## Golden rule
-Every tool receives a `SessionContext` and calls `assert_in_scope(...)` first. Access is scoped by
-identity at the data layer (IAM + FHIR `_security`) AND in-app — never by prompt instruction.
+Every tool reads the request's `SessionContext` and calls `assert_in_scope` before any AWS call.
+Access is scoped by identity at the data layer (IAM plus FHIR `_security`) and in-app, never by
+prompt instruction.
 
-## To make it real
+## Run it
 1. `cp .env.template .env` and fill in datastore id, bucket, model id, pool id.
-2. Implement the `TODO`s in `agent.py` (FHIR SigV4 + S3 boto3 calls).
-3. Implement identity extraction in `agent_agentcore.py::_session_from_event`.
-4. `python scripts/deploy_with_verification.py`.
+2. Point at a HealthLake datastore loaded with synthetic data.
+3. `python scripts/deploy_with_verification.py`.
